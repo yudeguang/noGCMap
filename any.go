@@ -26,7 +26,7 @@ type bucket struct {
 }
 type Config struct {
 	//用于定义当删除的键值对占总键值对的百分比达到多少时，开始一轮真正的删除老旧键值对，并回收内存空间操作
-	//该作介于1到100之间
+	//该值介于1到100之间
 	//默认为50
 	NeedDeketeKVPairPersent int
 	//用于定义chunkSize
@@ -262,7 +262,7 @@ func (n *NoGcMapAny) readKVPairForGC(chunkBuffer, KVPairBuffer []byte, dataBegin
 	return KVPairBuffer, h, hasDeleted
 }
 
-//写入数据 用于回收内存空间时
+//写入数据
 func (b *bucket) write(h uint64, k, v []byte) {
 	kvPairLen := 5 + len(k) + len(v) //1(该键值对是否已被删除);2(k的长度);2(v的长度);1+2+2=5
 	var kvLenBuf [4]byte

@@ -13,7 +13,6 @@ const bucketsNum = 512
 
 type NoGcMapAny struct {
 	lock                             sync.RWMutex
-	len                              int                //记录键值对个数
 	mapForHashCollisionAndLongKVPair map[string][]byte  //存放有hash冲突的第2次或2次以上出现的key,以及键值对超长的部分,毕竟超长的部分是少数
 	buckets                          [bucketsNum]bucket //数据分片存储
 }
@@ -306,4 +305,17 @@ func (b *bucket) writeKVPairForGC(h uint64, KVPairBuffer []byte) {
 	b.chunks[b.curChunkIndex] = append(b.chunks[b.curChunkIndex], KVPairBuffer...)
 	b.index[h] = b.dataBeginPos                       //先存储当前的键值对
 	b.dataBeginPos = b.dataBeginPos + uint(kvPairLen) //再更新下一个键值对的偏移
+}
+
+//返回长度，但不一定是绝对精确
+func (n *NoGcMapAny) Len() int {
+	n.lock.Lock()
+	num := len(n.mapForHashCollisionAndLongKVPair)
+	n.lock.Unlock()
+	for i := range n.buckets {
+		n.buckets[i].lock.Lock()
+		num = num + len(n.buckets[i].index)
+		n.buckets[i].lock.Unlock()
+	}
+	return num
 }

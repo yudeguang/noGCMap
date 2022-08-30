@@ -1,6 +1,8 @@
 # noGCMap
 https://github.com/yudeguang/noGcMap 与 https://github.com/yudeguang/noGcStaticMap 为同一系列的无GC类型MAP，两者针对的场景有一定差异,noGcStaticMap性能稍高，内存占用更小，但不支持增删改。
 
+与fastcache bigcache等相比，无hash冲突问题，并且对键值对增长无限制，不会删除老旧键值对。
+
 对于大型map，比如总数达到千万级别的map,如果键或者值中包含引用类型(string类型，结构体类型，或者任何基本类型+指针的定义 *int, *float 等)，那么这个map在垃圾回收的时候就会非常慢，GC的周期回收时间可以达到秒级甚至分钟级。
 
 对此参考fastcache等，把复杂的不利于GC的复杂map转化为基础类型的map map[uint64]uint32 用于存储索引 和 []byte用于存储实际键值。如此改造之后，基本上实现了零GC,总体而言：

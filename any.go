@@ -11,7 +11,7 @@ var needDeketeKVPairPersent = 50
 
 const bucketsNum = 512
 
-type NoGcMap struct {
+type NoGcMapAny struct {
 	lock                             sync.RWMutex
 	len                              int                //记录键值对个数
 	mapForHashCollisionAndLongKVPair map[string][]byte  //存放有hash冲突的第2次或2次以上出现的key,以及键值对超长的部分,毕竟超长的部分是少数
@@ -38,7 +38,7 @@ type Config struct {
 }
 
 //初始化 config配置可选
-func New(config ...Config) *NoGcMap {
+func New(config ...Config) *NoGcMapAny {
 	if len(config) > 0 {
 		if config[0].NeedDeketeKVPairPersent > 0 && config[0].NeedDeketeKVPairPersent <= 100 {
 			needDeketeKVPairPersent = config[0].NeedDeketeKVPairPersent
@@ -47,7 +47,7 @@ func New(config ...Config) *NoGcMap {
 			chunkSize = config[0].MultiplesOf64KForchunkSize * 64 * 1024
 		}
 	}
-	var n NoGcMap
+	var n NoGcMapAny
 	for i := range n.buckets {
 		n.buckets[i].index = make(map[uint64]uint)
 	}
@@ -56,7 +56,7 @@ func New(config ...Config) *NoGcMap {
 }
 
 //取出数据
-func (n *NoGcMap) Get(k []byte) (v []byte, exist bool) {
+func (n *NoGcMapAny) Get(k []byte) (v []byte, exist bool) {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsNum
 	n.buckets[idx].lock.RLock()
@@ -79,7 +79,7 @@ func (n *NoGcMap) Get(k []byte) (v []byte, exist bool) {
 }
 
 //取出数据,以string的方式
-func (n *NoGcMap) GetString(k string) (v string, exist bool) {
+func (n *NoGcMapAny) GetString(k string) (v string, exist bool) {
 	vbyte, exist := n.Get([]byte(k))
 	if exist {
 		return string(vbyte), true
@@ -88,7 +88,7 @@ func (n *NoGcMap) GetString(k string) (v string, exist bool) {
 }
 
 //增加数据
-func (n *NoGcMap) Set(k, v []byte) {
+func (n *NoGcMapAny) Set(k, v []byte) {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsNum
 	kvPairLen := len(k) + len(v) + 5
@@ -126,17 +126,17 @@ func (n *NoGcMap) Set(k, v []byte) {
 }
 
 //增加数据 以string的形式
-func (n *NoGcMap) SetString(k, v string) {
+func (n *NoGcMapAny) SetString(k, v string) {
 	n.Set([]byte(k), []byte(v))
 }
 
 //删除数据 以string的形式
-func (n *NoGcMap) DeleteString(k string) {
+func (n *NoGcMapAny) DeleteString(k string) {
 	n.Delete([]byte(k))
 }
 
 //删除数据
-func (n *NoGcMap) Delete(k []byte) {
+func (n *NoGcMapAny) Delete(k []byte) {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsNum
 	var findInbuckets = false
@@ -245,7 +245,7 @@ func (b *bucket) read(k []byte, dataBeginPos uint) (v []byte, exist bool) {
 }
 
 //读取数据 用于回收内存空间时
-func (n *NoGcMap) readKVPairForGC(chunkBuffer, KVPairBuffer []byte, dataBeginPos uint) ([]byte, uint64, bool) {
+func (n *NoGcMapAny) readKVPairForGC(chunkBuffer, KVPairBuffer []byte, dataBeginPos uint) ([]byte, uint64, bool) {
 	hasDeleted := false
 	//读取键值的长度 写得能懂直接从fastcache复制过来
 	if chunkBuffer[dataBeginPos] == 1 {

@@ -109,7 +109,7 @@ func (n *NoGcMapAny) Set(k, v []byte) {
 				return
 			} else {
 				//更新数据，val发生变化，那么先删除，然后在末尾添加一条新数据，并更新索引
-				n.buckets[idx].tryDelete(h, k, dataBeginPos, false)
+				n.buckets[idx].markAsDelete(h, k, dataBeginPos, false)
 				n.buckets[idx].write(h, k, v)
 				return
 			}
@@ -143,7 +143,7 @@ func (n *NoGcMapAny) Delete(k []byte) {
 	defer n.buckets[idx].lock.Unlock()
 	dataBeginPos, exist := n.buckets[idx].index[h]
 	if exist {
-		exist = n.buckets[idx].tryDelete(h, k, dataBeginPos, true)
+		exist = n.buckets[idx].markAsDelete(h, k, dataBeginPos, true)
 		if exist {
 			findInbuckets = true
 		}
@@ -156,8 +156,6 @@ func (n *NoGcMapAny) Delete(k []byte) {
 	}
 	//开始清除已删除的键值对,暂时做成需要一次性全部完成，后期在考虑是否做成一次只删除多少条的情况
 	if n.buckets[idx].deleteItemNum > 100 && float32(n.buckets[idx].deleteItemNum)/float32(len(n.buckets[idx].index))*100 > float32(needDeketeKVPairPersent) {
-		itemNum := 0
-		itemNumOfDeleted := 0
 		//重置数据
 		n.buckets[idx].dataBeginPos = 0
 		n.buckets[idx].curChunkIndex = 0
@@ -183,10 +181,7 @@ func (n *NoGcMapAny) Delete(k []byte) {
 				KVPairBuffer = KVPairBuffer[0:0]
 				KVPairBuffer, hh, hasDeleted = n.readKVPairForGC(chunkBuffer, KVPairBuffer, dataBeginPos)
 				if !hasDeleted {
-					itemNum++
 					n.buckets[idx].writeKVPairForGC(hh, KVPairBuffer)
-				} else {
-					itemNumOfDeleted++
 				}
 				dataBeginPos = dataBeginPos + uint(len(KVPairBuffer))
 			}
@@ -201,7 +196,7 @@ func (n *NoGcMapAny) Delete(k []byte) {
 }
 
 //如果存在某个键:1)相应键值对第一个字节改为1;2)并从索引中删除(只针对从Delete方法);3)增加删除计数器;
-func (b *bucket) tryDelete(h uint64, k []byte, dataBeginPos uint, isFromDelete bool) (exist bool) {
+func (b *bucket) markAsDelete(h uint64, k []byte, dataBeginPos uint, isFromDelete bool) (exist bool) {
 	chunkIndex := int(dataBeginPos) / chunkSize
 	dataBeginPos = dataBeginPos % uint(chunkSize)
 	//读取键值的长度

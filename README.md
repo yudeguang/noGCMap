@@ -11,7 +11,7 @@ https://github.com/yudeguang/noGcMap 与 https://github.com/yudeguang/noGcStatic
 
 2)无hash碰撞问题;
 
-3) https://github.com/yudeguang/noGcStaticMap 相比，支持增删改;
+3)支持增删改( 相比 https://github.com/yudeguang/noGcStaticMap );
 
 4)代码量非常少，适合根据自己需求做二次修改;
 

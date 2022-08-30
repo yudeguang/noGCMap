@@ -1,5 +1,5 @@
 # noGCMap
-https://github.com/yudeguang/noGcMap与https://github.com/yudeguang/noGcStaticMap为同一系列的无GC类型MAP，两者针对的场景有一定差异。
+https://github.com/yudeguang/noGcMap 与 https://github.com/yudeguang/noGcStaticMap 为同一系列的无GC类型MAP，两者针对的场景有一定差异,noGcStaticMap性能稍高，内存占用更小，但不支持增删改。
 
 对于大型map，比如总数达到千万级别的map,如果键或者值中包含引用类型(string类型，结构体类型，或者任何基本类型+指针的定义 *int, *float 等)，那么这个map在垃圾回收的时候就会非常慢，GC的周期回收时间可以达到秒级甚至分钟级。
 

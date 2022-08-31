@@ -7,15 +7,12 @@ package noGCMap
 
 import (
 	"log"
-	"runtime"
-	"runtime/debug"
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 )
 
-func TestAny(t *testing.T) {
+func TestInt(t *testing.T) {
 	log.SetFlags(log.Lshortfile | log.Ltime)
 	//构建值
 	var str string
@@ -31,25 +28,24 @@ func TestAny(t *testing.T) {
 	chanNum := 10
 	var max = 1000000
 	var maxDeleted = 500000
-	var mapOffical = make(map[string]string)
-	var mapAny = New()
+	var mapOffical = make(map[int]string)
+	var mapInt = NewInt()
 	log.Println("开始测试并发写")
 	//set
 	var wgSet sync.WaitGroup
 	wgSet.Add(chanNum)
-	mapAny.SetString("", "empty")
-	mapAny.SetString("empty", "")
-	mapAny.SetString("bigStr", bigStr)
+	mapInt.SetString(-10, "")
+	mapInt.SetString(-1, bigStr)
 
 	//offical
 	for i := 0; i < max; i++ {
-		mapOffical[strconv.Itoa(i)] = "@" + strconv.Itoa(i) + str
+		mapOffical[i] = "@" + strconv.Itoa(i) + str
 	}
 	//mapAny
 	for i := 0; i < chanNum; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			for i := 0; i < max; i++ {
-				mapAny.SetString(strconv.Itoa(i), "@"+strconv.Itoa(i)+str)
+				mapInt.SetString(i, "@"+strconv.Itoa(i)+str)
 			}
 			wgSet.Done()
 		}(i, &wgSet)
@@ -62,8 +58,8 @@ func TestAny(t *testing.T) {
 	for i := 0; i < chanNum; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			for i := 0; i < max+100; i++ {
-				valOffical, existOffical := mapOffical[strconv.Itoa(i)]
-				valAny, existAny := mapAny.GetString(strconv.Itoa(i))
+				valOffical, existOffical := mapOffical[i]
+				valAny, existAny := mapInt.GetString(i)
 				if existOffical != existAny {
 					t.Fatalf("unexpected value obtained; got %v want %v", existAny, existOffical)
 				}
@@ -76,7 +72,7 @@ func TestAny(t *testing.T) {
 	}
 	wgGet.Wait()
 	//get value empty
-	valEmpty, exist := mapAny.GetString("empty")
+	valEmpty, exist := mapInt.GetString(-10)
 	if !exist {
 		t.Fatalf("unexpected value obtained; got %v want %v", exist, true)
 	}
@@ -84,23 +80,15 @@ func TestAny(t *testing.T) {
 		t.Fatalf("unexpected value obtained; got %q want %q", valEmpty, "")
 	}
 
-	//get key empty
-	valOFKeyEmpty, exist := mapAny.GetString("")
-	if !exist {
-		t.Fatalf("unexpected value obtained; got %v want %v", exist, true)
-	}
-	if valOFKeyEmpty != "empty" {
-		t.Fatalf("unexpected value obtained; got %q want %q", valOFKeyEmpty, "empty")
-	}
 	//算一下key个数
 	var keyNum, deleteItemNum int
-	for i := range mapAny.buckets {
-		keyNum = keyNum + len(mapAny.buckets[i].index)
-		deleteItemNum = deleteItemNum + mapAny.buckets[i].deleteItemNum
+	for i := range mapInt.buckets {
+		keyNum = keyNum + len(mapInt.buckets[i].index)
+		deleteItemNum = deleteItemNum + mapInt.buckets[i].deleteItemNum
 	}
-	keyNum = keyNum + len(mapAny.mapForHashCollisionAndLongKVPair)
+	keyNum = keyNum + len(mapInt.mapForLongKVPair)
 
-	if keyNum != max+3 {
+	if keyNum != max+2 {
 		t.Fatalf("unexpected value obtained; got %v want %v", keyNum, max+3)
 	}
 	log.Println("开始测试并发删除")
@@ -110,8 +98,8 @@ func TestAny(t *testing.T) {
 	for i := 0; i < chanNum; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			for i := -100; i < maxDeleted; i++ {
-				mapAny.DeleteString(strconv.Itoa(i))
-				_, exist := mapAny.GetString(strconv.Itoa(i))
+				mapInt.Delete(i)
+				_, exist := mapInt.GetString(i)
 				if exist {
 					t.Fatalf("unexpected value obtained; got %v want %v", exist, false)
 				}
@@ -121,7 +109,7 @@ func TestAny(t *testing.T) {
 	}
 	wgDelete.Wait()
 	for i := -100; i < maxDeleted; i++ {
-		delete(mapOffical, strconv.Itoa(i))
+		delete(mapOffical, i)
 	}
 	log.Println("开始测试并发删除之后与官方结果对比")
 	//get 删除之后再用get测试
@@ -130,8 +118,8 @@ func TestAny(t *testing.T) {
 	for i := 0; i < chanNum; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			for i := 0; i < max+100; i++ {
-				valOffical, existOffical := mapOffical[strconv.Itoa(i)]
-				valAny, existAny := mapAny.GetString(strconv.Itoa(i))
+				valOffical, existOffical := mapOffical[i]
+				valAny, existAny := mapInt.GetString(i)
 				if existOffical != existAny {
 					t.Fatalf("unexpected value obtained; got %v want %v", existAny, existOffical)
 				}
@@ -155,31 +143,21 @@ func TestAny(t *testing.T) {
 	for i := 0; i < chanNum; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			for i := 0; i < max+100; i++ {
-				mapAny.SetString(strconv.Itoa(i), strconv.Itoa(i))
-				mapAny.GetString(strconv.Itoa(i - 1))
-				mapAny.DeleteString(strconv.Itoa(i - 1))
+				mapInt.SetString(i, strconv.Itoa(i))
+				mapInt.GetString(i - 1)
+				mapInt.Delete(i - 1)
 			}
 			wgSetGetDelete.Done()
 		}(i, &wgSetGetDelete)
 	}
 	wgSetGetDelete.Wait()
-	mapAny = nil
+	mapInt = nil
 	log.Println("清除所有数据")
 	gcRunAndPrint()
 	log.Println("开始测试2000W键值对 GC耗时")
-	mapAny2 := New()
+	mapint2 := NewInt()
 	for i := 0; i < 20000000; i++ {
-		mapAny2.SetString(strconv.Itoa(i), "@"+strconv.Itoa(i)+str)
+		mapint2.SetString(i, "@"+strconv.Itoa(i)+str)
 	}
 	gcRunAndPrint()
-}
-
-//一般是第二次执行才是真实耗时
-func gcRunAndPrint() {
-	runtime.GC()
-	debug.FreeOSMemory()
-	begin_time := time.Now()
-	runtime.GC()
-	debug.FreeOSMemory()
-	log.Println("GC耗时:", "耗时:", time.Now().Sub(begin_time).String())
 }

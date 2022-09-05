@@ -69,15 +69,15 @@ func (n *NoGcMapAny) Get(k []byte) (v []byte, exist bool) {
 	if exist {
 		v, exist = n.buckets[idx].read(k, dataBeginPos)
 		if exist {
-			return
+			return v, exist
 		}
 	}
 	//分片数据中没找到，下面再从可能存在hash冲突的小表查找
 	n.lock.RLock()
 	defer n.lock.RUnlock()
-	val, exist := n.mapForHashCollisionAndLongKVPair[string(k)]
+	v, exist = n.mapForHashCollisionAndLongKVPair[string(k)]
 	if exist {
-		return val, exist
+		return v, exist
 	}
 	return v, false
 }
@@ -97,7 +97,7 @@ func (n *NoGcMapAny) Set(k, v []byte) {
 	idx := h % bucketsNum
 	kvPairLen := len(k) + len(v) + 5
 	//不支持KV长度过大的数据，如果过长，会被存储到mapForHashCollisionAndLongKVPair
-	if kvPairLen > chunkSize {
+	if kvPairLen > chunkSize || len(k) > 65535 || len(v) > 65535 {
 		n.lock.Lock()
 		n.mapForHashCollisionAndLongKVPair[string(k)] = v
 		n.lock.Unlock()

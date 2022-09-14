@@ -11,11 +11,13 @@ https://github.com/yudeguang/noGcMap 与 https://github.com/yudeguang/noGcStatic
 
 1)几乎零GC;
 
-2)无hash碰撞问题;
+2)无hash碰撞问题(对比fastcache);
 
 3)支持增删改( 相比 https://github.com/yudeguang/noGcStaticMap );
 
 4)代码量非常少，适合根据自己需求做二次修改;
+
+5)不限制键值对占用内存量(对比fastcache);
 
 缺点:
 1)性能比 https://github.com/yudeguang/noGcStaticMap 稍差，内存占用稍高;
